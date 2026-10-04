@@ -1,0 +1,39 @@
+# Raw 11GB dataset
+data/raw/
+tshirt/simulations/
+dress/simulations/
+vto-dataset-main/
+*.pkl
+
+# Large processed datasets
+data/processed/
+*.npy
+*.npz
+
+# Large model checkpoints
+*.pth
+*.pt
+*.ckpt
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log

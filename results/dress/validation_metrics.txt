@@ -1,0 +1,12 @@
+Data-Driven Cloth Validation Evaluation
+========================================
+
+Number of validation samples: 1897
+Input dimension: 72
+PCA dimension: 64
+Original output dimension: 36438
+
+Coordinate MSE: 0.01471933
+Coordinate RMSE: 0.12132326
+Mean vertex error: 0.14150962
+Maximum vertex error: 1.73471749

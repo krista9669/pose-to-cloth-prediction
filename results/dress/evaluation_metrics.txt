@@ -1,0 +1,12 @@
+Data-Driven Cloth Test Evaluation
+========================================
+
+Number of test samples: 1897
+Input dimension: 72
+PCA dimension: 64
+Original output dimension: 36438
+
+Coordinate MSE: 0.01583993
+Coordinate RMSE: 0.12585677
+Mean vertex error: 0.14734755
+Maximum vertex error: 1.50103354

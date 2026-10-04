@@ -1,0 +1,6 @@
+Garment: tshirt
+Device: cpu
+Neural network inference: 0.5324 ms
+PCA reconstruction: 0.2598 ms
+Total prediction time: 0.7922 ms
+Estimated prediction FPS: 1262.33
