@@ -70,7 +70,7 @@ Our implementation follows this general data-driven approach while adapting it t
 
 This project supports the T-shirt and Dress subsets of the Santesteban virtual try-on dataset. Each subset contains simulated garment sequences with pose parameters, vertices, triangular faces, and simulation metadata.
 
-The raw dataset is approximately 11 GB and stays outside this repository. The pipeline reads up to 100 sorted `.pkl` simulation files from the selected garment's `simulations` directory. Mesh vertex and face counts are read from those files; they are not shared constants. The completed runs use 4,424 vertices and 8,710 faces for T-shirt, and 12,146 vertices and 23,949 faces for Dress.
+The raw dataset is approximately 11 GB and stays outside this repository. The pipeline reads up to 100 sorted `.pkl` simulation files from each garment's `simulations` directory. Mesh vertex and face counts are read from those files; they are not shared constants. The current processed datasets use 4,424 vertices and 8,710 faces for T-shirt, and 12,146 vertices and 23,949 faces for Dress.
 
 The existing T-shirt processed arrays, checkpoint, and results are retained under the lowercase `tshirt/` artifact folders. Dress artifacts are isolated under `dress/`.
 
@@ -122,9 +122,9 @@ The garment representation is reduced to:
 64 PCA components
 ```
 
-For the existing T-shirt baseline, the 64 components retain 99.9983% of the variance; for Dress, they retain 99.9964%. Variance retention is computed independently for each garment during preparation.
+For the current processed datasets, the 64 components retain 99.99831% of T-shirt variance and 99.99642% of Dress variance. PCA is fitted independently for each garment during preparation.
 
-The neural network therefore predicts only 64 values instead of 13,272 coordinates.
+The neural network therefore predicts 64 values instead of 13,272 T-shirt coordinates or 36,438 Dress coordinates.
 
 The predicted 64-dimensional representation is then transformed back into the original garment space using the inverse PCA transformation.
 
@@ -207,83 +207,42 @@ Training automatically uses CUDA when available and otherwise falls back to CPU.
 
 ---
 
-## 11. Existing T-Shirt Training Results
+## 11. Training Results
 
-The training and validation loss decreased substantially during training.
+The current saved histories contain per-epoch values for all 100 epochs:
 
-| Epoch | Training Loss | Validation Loss |
-|---:|---:|---:|
-| 1 | 99.117988 | 73.784012 |
-| 10 | 22.067582 | 22.998413 |
-| 20 | 10.563653 | 12.917937 |
-| 30 | 6.222552 | 7.742776 |
-| 40 | 4.285701 | 4.890603 |
-| 50 | 3.869607 | 3.763932 |
-| 60 | 2.743935 | 3.350342 |
-| 70 | 2.284440 | 1.960781 |
-| 80 | 1.527102 | 1.742367 |
-| 90 | 1.748108 | 1.467753 |
-| 100 | 0.974768 | 1.303923 |
+| Garment | Final Training Loss | Final Validation Loss |
+|---|---:|---:|
+| T-shirt | 1.219721 | 1.199557 |
+| Dress | 3.060994 | 5.229857 |
 
-The original T-shirt run retained loss values only at these 11 epochs; intermediate per-epoch values are not available. These checkpoints are also saved in `results/tshirt/training_history.csv`.
-
-### Dress Training Results
-
-The Dress model completed 100 epochs. Its final training loss was 3.548626 and validation loss was 6.319234. Per-epoch values are saved in `results/dress/training_history.csv`.
+Full histories are saved in `results/<garment>/training_history.csv`.
 
 ---
 
 ## 12. Evaluation
 
-After predicting the 64 PCA coefficients, the coefficients are transformed back into the selected garment's original coordinate dimension.
+After predicting the 64 PCA coefficients, the evaluator applies the garment-specific inverse PCA transform and reshapes the result into 3D vertices. `validate.py` evaluates the validation split and writes `validation_*` artifacts; `test.py` evaluates the held-out test split and writes the standard prediction files. Metrics are saved separately in `validation_metrics.txt` and `evaluation_metrics.txt` under each garment's results directory.
 
-The reconstructed representation is reshaped into:
+Current saved metrics are:
 
-3D garment vertices, with the vertex count obtained from that garment's prepared data.
-
-### Existing T-Shirt Test Results
-
-| Metric | Value |
-|---|---:|
-| Coordinate MSE | 0.00737465 |
-| Coordinate RMSE | 0.08587576 |
-| Mean vertex error | 0.09866848 |
-| Maximum vertex error | 1.09905314 |
-
-### Dress Test Results
-
-| Metric | Value |
-|---|---:|
-| Coordinate MSE | 0.01157805 |
-| Coordinate RMSE | 0.10760133 |
-| Mean vertex error | 0.12303245 |
-| Maximum vertex error | 1.64917481 |
-
-The predicted garment is compared directly against the simulated ground-truth garment.
+| Garment | Split | Coordinate MSE | Coordinate RMSE | Mean Vertex Error | Maximum Vertex Error |
+|---|---|---:|---:|---:|---:|
+| T-shirt | Validation | 0.00668294 | 0.08174925 | 0.09972924 | 1.06472671 |
+| T-shirt | Test | 0.00783738 | 0.08852900 | 0.10137938 | 1.31943631 |
+| Dress | Validation | 0.01471933 | 0.12132326 | 0.14150962 | 1.73471749 |
+| Dress | Test | 0.01583993 | 0.12585677 | 0.14734755 | 1.50103354 |
 
 ---
 
-## 13. Existing T-Shirt Inference Performance
+## 13. Inference Performance
 
-Inference was benchmarked on a CPU.
+The current saved benchmarks were measured on CPU:
 
-### Timing
-
-| Operation | Time |
-|---|---:|
-| Neural network inference | 0.4683 ms |
-| PCA reconstruction | 0.2189 ms |
-| Total | 0.6872 ms |
-
-This corresponds to an estimated prediction throughput of:
-
-```text
-1455.16 predictions/second
-```
-
-on the benchmark CPU environment.
-
-The completed Dress benchmark on CPU measured 0.3288 ms for neural-network inference and 0.6621 ms for PCA reconstruction, for 0.9909 ms total (about 1,009.21 predictions/second).
+| Garment | Neural Network (ms) | PCA Reconstruction (ms) | Total (ms) | Estimated FPS |
+|---|---:|---:|---:|---:|
+| T-shirt | 0.5324 | 0.2598 | 0.7922 | 1,262.33 |
+| Dress | 0.3437 | 0.4530 | 0.7968 | 1,255.08 |
 
 > **Note:** This benchmark measures neural-network inference and PCA reconstruction only. It does not represent the complete GUI or 3D rendering frame rate.
 
@@ -308,9 +267,10 @@ The corresponding MSE, RMSE, and mean vertex error are also displayed.
 Run:
 
 ```bash
-python src/pipeline/interactive_demo.py --garment tshirt
-python src/pipeline/interactive_demo.py --garment dress
+python src/pipeline/interactive_demo.py
 ```
+
+The command processes all configured garments. Close each garment window to continue to the next one; use `--garment tshirt` or `--garment dress` to select only one.
 
 ---
 
@@ -321,30 +281,38 @@ python src/pipeline/interactive_demo.py --garment dress
 Run:
 
 ```bash
-python src/pipeline/visualize.py --garment tshirt
-python src/pipeline/visualize.py --garment dress
+python src/pipeline/visualize.py
 ```
 
-Generates:
+Generates one image per configured garment:
 
 ```text
-results/tshirt/cloth_comparison.png
+results/<garment>/cloth_comparison.png
 ```
+
+Example outputs:
+
+| T-shirt | Dress |
+|---|---|
+| ![T-shirt point-cloud comparison](images/tshirt_comparison.png) | ![Dress point-cloud comparison](images/dress_comparison.png) |
 
 ### Surface Mesh Comparison
 
 Run:
 
 ```bash
-python src/pipeline/visualize_mesh.py --garment tshirt
-python src/pipeline/visualize_mesh.py --garment dress
+python src/pipeline/visualize_mesh.py
 ```
 
-Generates:
+Generates one image per configured garment:
 
 ```text
-results/tshirt/cloth_surface_comparison.png
+results/<garment>/cloth_surface_comparison.png
 ```
+
+| T-shirt surface | Dress surface |
+|---|---|
+| ![T-shirt surface comparison](images/tshirt_surface_comparison.png) | ![Dress surface comparison](images/dress_surface_comparison.png) |
 
 Surface visualization uses the selected garment's triangular mesh topology.
 
@@ -353,14 +321,13 @@ Surface visualization uses the selected garment's triangular mesh topology.
 Run:
 
 ```bash
-python src/pipeline/plot_training.py --garment tshirt
-python src/pipeline/plot_training.py --garment dress
+python src/pipeline/plot_training.py
 ```
 
-Generates:
+Generates one image per configured garment:
 
 ```text
-results/tshirt/training_validation_loss.png
+results/<garment>/training_validation_loss.png
 ```
 
 ---
@@ -370,10 +337,10 @@ results/tshirt/training_validation_loss.png
 The complete pipeline is:
 
 ```text
-                 SMPL Pose
-                     │
-                     ▼
-            72-dimensional input
+                         Human Pose
+                               │
+                               ▼
+                  72-dimensional input
                      │
                      ▼
             Fully Connected NN
@@ -412,11 +379,15 @@ Data-Driven-Cloth-For-Interactive-Applications/
 │   ├── tshirt/cloth_predictor.pth
 │   └── dress/cloth_predictor.pth
 │
-├── notebooks/
+├── images/
+│   ├── tshirt_comparison.png
+│   ├── tshirt_surface_comparison.png
+│   ├── dress_comparison.png
+│   └── dress_surface_comparison.png
 │
 ├── results/
-│   ├── tshirt/ (retained T-shirt results)
-│   └── dress/  (Dress-specific results)
+│   ├── tshirt/ (training, validation, test, benchmark, and visualization outputs)
+│   └── dress/  (training, validation, test, benchmark, and visualization outputs)
 │
 ├── src/pipeline/
 │   ├── garment_config.py
@@ -462,28 +433,29 @@ Set the external dataset root once in PowerShell (it contains `tshirt/` and `dre
 $env:CLOTH_DATASET_ROOT = "D:\datasets\vto-dataset-main"
 ```
 
-Alternatively, pass `--dataset-dir` with the selected garment's `simulations` folder. Neither option copies raw data into this repository.
-All pipeline commands accept `--garment tshirt` or `--garment dress`; model and result files are kept separate per garment.
+Alternatively, pass `--dataset-dir` with one garment's `simulations` folder when preparing that garment. Neither option copies raw data into this repository. If processed arrays already exist and raw data is not configured, preparation reports that the data is already prepared; configure a raw-data path to rebuild it.
+
+Pipeline commands default to all configured garments. Pass `--garment tshirt` or `--garment dress` to process only one; model and result files are kept separate per garment.
 
 ### Step 1 — Prepare Dataset
 
 ```bash
-python src/pipeline/prepare_dataset.py --garment tshirt
-python src/pipeline/prepare_dataset.py --garment dress
+python src/pipeline/prepare_dataset.py
 ```
 
 This:
 
-- Loads the selected garment's simulation data.
+- Loads each configured garment's simulation data.
 - Creates train/validation/test splits.
 - Fits PCA on training data.
 - Saves arrays, PCA, mesh faces, and vertex metadata under `data/processed/<garment>/`.
 
+When run without raw data configuration, it exits successfully without rebuilding if all processed files are already present.
+
 ### Step 2 — Train Model
 
 ```bash
-python src/pipeline/train.py --garment tshirt
-python src/pipeline/train.py --garment dress
+python src/pipeline/train.py
 ```
 
 The trained model is saved as:
@@ -538,7 +510,7 @@ python src/pipeline/benchmark.py
 python src/pipeline/plot_training.py
 ```
 
-Each command defaults to all configured garments. Pass `--garment tshirt` or `--garment dress` to run only one garment.
+The commands above run all configured garments by default. Add `--garment tshirt` or `--garment dress` to run only one.
 
 ---
 
@@ -596,11 +568,11 @@ Potential extensions include:
 - Sequence-level train/validation/test splitting.
 - Predicting garment deformation offsets instead of absolute coordinates.
 - Temporal models for smoother cloth motion.
-- Additional garment types such as dresses.
+- Additional garment types beyond the currently supported T-shirt and Dress.
 - More simulation data.
 - Pose and body-shape conditioning.
 - CNN or graph-based garment models.
-- GPU acceleration.
+- Further GPU-optimized training and inference.
 - Collision-aware prediction.
 - Interactive camera and pose controls.
 - Real-time integration with a 3D graphics environment.
@@ -624,50 +596,14 @@ Potential extensions include:
 
 ## 24. Key Results
 
-### Dataset
+### Dataset and Mesh Sizes
 
-```text
-12,290 frames
-4,424 vertices per garment
-8,710 triangular faces
-72-dimensional pose input
-```
+| Garment | Frames | Vertices | Faces | Coordinate Dimension |
+|---|---:|---:|---:|---:|
+| T-shirt | 12,290 | 4,424 | 8,710 | 13,272 |
+| Dress | 12,645 | 12,146 | 23,949 | 36,438 |
 
-### Dimensionality Reduction
-
-```text
-13,272 → 64 dimensions
-```
-
-with:
-
-```text
-99.9983% variance retained
-```
-
-### Prediction Accuracy
-
-```text
-MSE  = 0.00737465
-RMSE = 0.08587576
-
-Mean vertex error
-= 0.09866848
-
-Maximum vertex error
-= 1.09905314
-```
-
-### Inference
-
-```text
-Neural network = 0.4683 ms
-PCA            = 0.2189 ms
-Total          = 0.6872 ms
-
-Estimated prediction throughput
-= 1455.16 predictions/second
-```
+Both garment models use a 72-dimensional pose input and 64 PCA outputs. Current split metrics and benchmark timings are in Sections 12 and 13 and in each garment's `results/` directory.
 
 ---
 
